@@ -115,6 +115,8 @@ def boot_session(bootinfo):
 
 def after_install():
 	"""Free License by default, and "DagaarSoft License" in the user menu."""
+	if not frappe.db.exists("DocType", DOCTYPE):
+		frappe.reload_doc("dagaarsoft_license", "doctype", "dagaarsoft_license")
 	if not frappe.db.get_single_value(DOCTYPE, "state"):
 		frappe.db.set_single_value(DOCTYPE, "state", "Free")
 	nav = frappe.get_single("Navbar Settings")

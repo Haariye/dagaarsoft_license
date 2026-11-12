@@ -58,13 +58,13 @@
 			<div class="dsl-grid">
 				<div><div class="dsl-k">Product</div><div class="dsl-v">DagaarSoft${d.customer_name ? " · " + esc(d.customer_name) : ""}</div></div>
 				<div><div class="dsl-k">Plan</div><div class="dsl-v">${esc(d.plan || en)}</div></div>
-				<div><div class="dsl-k">License Status</div><div class="dsl-pill ${tone}">${tone === "ok" ? "✔" : "⚠"} ${esc(en)}</div></div>
+				<div><div class="dsl-k">License Status</div><div class="dsl-pill ${tone}">${esc(en)}</div></div>
 			</div>
 			<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>
 			<p class="dsl-msg en">${esc(d.message_en || msg[1])}</p>
 			${amount ? `<div class="dsl-due">Lacagta kugu maqan / Amount due: <b>${amount}</b>${d.read_only_until && d.state === "Read Only" ? ` · Akhris-keliya ilaa / Read-only until ${esc(d.read_only_until)}` : ""}</div>` : ""}
 			<div class="dsl-pay">${(d.methods || []).map((m) => `<button type="button" data-m="${esc(m)}">${esc(m)}</button>`).join("")}</div>
-			<div class="dsl-help">ⓘ <span>Caawimaad? La xidhiidh ${esc(d.contact || "Dagaar Technology")}. / Need help? Contact ${esc(d.contact || "Dagaar Technology")}.</span></div>
+			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad? La xidhiidh ${esc(d.contact || "Dagaar Technology")}. / Need help? Contact ${esc(d.contact || "Dagaar Technology")}.</span></div>
 		</div>
 		<div class="dsl-foot">
 			${due ? `<button class="btn btn-primary dsl-activate" type="button">Activate License</button>` : ""}
