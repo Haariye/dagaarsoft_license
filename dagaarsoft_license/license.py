@@ -55,7 +55,7 @@ def effective_state(lic=None):
 
 def guard_write(doc, method=None):
 	"""Read Only: no changes by people (scheduled and system jobs are not blocked)."""
-	if doc.doctype in ALWAYS_ALLOWED or frappe.flags.in_install or frappe.flags.in_migrate:
+	if doc.doctype in ALWAYS_ALLOWED or frappe.flags.in_install or frappe.flags.in_migrate or frappe.flags.dagaarsoft_license_cleanup:
 		return
 	if not getattr(frappe.local, "request", None):
 		return

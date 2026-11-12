@@ -39,3 +39,40 @@ def sign_in_notice():
 		return {"state": data["state"]}
 	return {k: data[k] for k in ("state", "message_so", "message_en", "amount", "currency", "pay_url", "help_url",
 	                             "methods", "contact")}
+
+
+@frappe.whitelist(methods=["POST"])
+def cleanup_legacy(users=None, announcement=None):
+	"""Called by the Dagaar control server: remove the older notice (sign-in script and banner) and switch
+	back on the users it had switched off. Works in any state, read-only included."""
+	import json
+
+	if "System Manager" not in frappe.get_roles():
+		frappe.throw(_("Not permitted."), frappe.PermissionError)
+	frappe.flags.dagaarsoft_license_cleanup = True
+	try:
+		ws = frappe.get_single("Website Script")
+		js = ws.javascript or ""
+		start, end = "/* dagaar-service:start */", "/* dagaar-service:end */"
+		while start in js and end in js:
+			a = js.index(start)
+			b = js.index(end, a) + len(end)
+			js = (js[:a].rstrip("\n") + "\n" + js[b:].lstrip("\n")).strip("\n")
+		if js != (ws.javascript or ""):
+			ws.javascript = js
+			ws.flags.ignore_permissions = True
+			ws.save()
+		nav = frappe.get_single("Navbar Settings")
+		if "<!-- dagaar-service -->" in (nav.announcement_widget or ""):
+			nav.announcement_widget = announcement or ""
+			nav.flags.ignore_permissions = True
+			nav.save()
+		names = json.loads(users) if isinstance(users, str) else (users or [])
+		enabled = []
+		for user in names:
+			if user not in ("Administrator", "Guest") and frappe.db.exists("User", user):
+				frappe.db.set_value("User", user, "enabled", 1)
+				enabled.append(user)
+		return {"ok": True, "users_enabled": enabled}
+	finally:
+		frappe.flags.dagaarsoft_license_cleanup = False
