@@ -1,0 +1,142 @@
+{
+ "actions": [],
+ "creation": "2026-11-13 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "state",
+  "plan",
+  "customer_name",
+  "cb1",
+  "last_update",
+  "due_date",
+  "read_only_until",
+  "sb1",
+  "amount",
+  "currency",
+  "payment_methods",
+  "cb2",
+  "pay_url",
+  "help_url",
+  "contact",
+  "sb2",
+  "message_so",
+  "message_en"
+ ],
+ "fields": [
+  {
+   "default": "Free",
+   "fieldname": "state",
+   "fieldtype": "Select",
+   "label": "State",
+   "options": "Free\nActive\nReminder\nGrace\nRead Only\nSuspended",
+   "reqd": 1
+  },
+  {
+   "fieldname": "plan",
+   "fieldtype": "Data",
+   "label": "Plan"
+  },
+  {
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "label": "Licensed To"
+  },
+  {
+   "fieldname": "cb1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_update",
+   "fieldtype": "Datetime",
+   "label": "Last Update",
+   "read_only": 1
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Date",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "read_only_until",
+   "fieldtype": "Date",
+   "label": "Read Only Until"
+  },
+  {
+   "fieldname": "sb1",
+   "fieldtype": "Section Break",
+   "label": "Payment"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Float",
+   "label": "Amount Due",
+   "precision": "2"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Data",
+   "label": "Currency"
+  },
+  {
+   "default": "ZAAD, EVC Plus, Sahal, eDahab",
+   "fieldname": "payment_methods",
+   "fieldtype": "Data",
+   "label": "Payment Methods"
+  },
+  {
+   "fieldname": "cb2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pay_url",
+   "fieldtype": "Data",
+   "label": "Payment Page"
+  },
+  {
+   "fieldname": "help_url",
+   "fieldtype": "Data",
+   "label": "Help Page"
+  },
+  {
+   "default": "Dagaar Technology",
+   "fieldname": "contact",
+   "fieldtype": "Data",
+   "label": "Contact"
+  },
+  {
+   "fieldname": "sb2",
+   "fieldtype": "Section Break",
+   "label": "Messages"
+  },
+  {
+   "fieldname": "message_so",
+   "fieldtype": "Small Text",
+   "label": "Message (Somali)"
+  },
+  {
+   "fieldname": "message_en",
+   "fieldtype": "Small Text",
+   "label": "Message (English)"
+  }
+ ],
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-11-13 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "DagaarSoft License",
+ "name": "DagaarSoft License",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

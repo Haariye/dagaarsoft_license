@@ -1,0 +1,26 @@
+app_name = "dagaarsoft_license"
+app_title = "DagaarSoft License"
+app_publisher = "Dagaar Technology"
+app_description = "DagaarSoft License: subscription status, reminders, read-only and suspension"
+app_email = "info@dagaar.com"
+app_license = "MIT"
+
+after_install = "dagaarsoft_license.license.after_install"
+after_migrate = "dagaarsoft_license.license.after_install"
+
+app_include_js = ["/assets/dagaarsoft_license/js/license.js"]
+web_include_js = ["/assets/dagaarsoft_license/js/license_web.js"]
+
+boot_session = "dagaarsoft_license.license.boot_session"
+on_session_creation = "dagaarsoft_license.license.on_session_creation"
+before_request = ["dagaarsoft_license.license.before_request"]
+
+doc_events = {
+	"*": {
+		"before_insert": "dagaarsoft_license.license.guard_write",
+		"validate": "dagaarsoft_license.license.guard_write",
+		"on_trash": "dagaarsoft_license.license.guard_write",
+		"before_submit": "dagaarsoft_license.license.guard_write",
+		"before_cancel": "dagaarsoft_license.license.guard_write",
+	}
+}
