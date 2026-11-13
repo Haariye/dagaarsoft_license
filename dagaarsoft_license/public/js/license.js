@@ -57,7 +57,7 @@
 			<button class="dsl-x" type="button" aria-label="Close">×</button></div>
 		<div class="dsl-body">
 			<div class="dsl-grid">
-				<div><div class="dsl-k">Product</div><div class="dsl-v">DagaarSoft${d.customer_name ? " · " + esc(d.customer_name) : ""}</div></div>
+				<div><div class="dsl-k">Product</div><div class="dsl-v">DagaarSoft</div></div>
 				<div><div class="dsl-k">Plan</div><div class="dsl-v">${esc((d.plan_features && d.plan_features[0]) || d.plan || en)}</div>${(d.plan_features || []).slice(1).map((f) => `<div class="dsl-f">${esc(f)}</div>`).join("")}</div>
 				<div><div class="dsl-k">License Status</div><div class="dsl-pill ${tone}">${esc(en)}</div></div>
 			</div>
