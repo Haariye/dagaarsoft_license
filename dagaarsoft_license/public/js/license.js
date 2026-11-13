@@ -31,6 +31,7 @@
 	.dsl-grid{display:grid;grid-template-columns:1.4fr 1fr 1.2fr;border:1px solid var(--border-color);border-radius:12px;background:var(--subtle-fg,#f7f9fc)}
 	.dsl-grid>div{padding:14px 18px}.dsl-grid>div+div{border-left:1px solid var(--border-color)}
 	.dsl-k{font-size:13px;color:var(--text-muted)}.dsl-v{font-size:18px;font-weight:700;color:var(--heading-color);margin-top:4px}
+	.dsl-f{font-size:13px;color:var(--text-muted);margin-top:3px}.dsl-f:before{content:"✓ ";color:#2FB84A}
 	.dsl-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;font-weight:700;font-size:14px;margin-top:4px}
 	.dsl-pill.ok{background:#dcf5e3;color:#1c7a36}.dsl-pill.warn{background:#ffe8c2;color:#9a5a00}.dsl-pill.bad{background:#fde0de;color:#b3261e}
 	.dsl-msg{font-size:15px;line-height:1.6;margin:18px 0 0;color:var(--text-color)}.dsl-msg.en{color:var(--text-muted);margin-top:8px}
@@ -57,7 +58,7 @@
 		<div class="dsl-body">
 			<div class="dsl-grid">
 				<div><div class="dsl-k">Product</div><div class="dsl-v">DagaarSoft${d.customer_name ? " · " + esc(d.customer_name) : ""}</div></div>
-				<div><div class="dsl-k">Plan</div><div class="dsl-v">${esc(d.plan || en)}</div></div>
+				<div><div class="dsl-k">Plan</div><div class="dsl-v">${esc((d.plan_features && d.plan_features[0]) || d.plan || en)}</div>${(d.plan_features || []).slice(1).map((f) => `<div class="dsl-f">${esc(f)}</div>`).join("")}</div>
 				<div><div class="dsl-k">License Status</div><div class="dsl-pill ${tone}">${esc(en)}</div></div>
 			</div>
 			<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>

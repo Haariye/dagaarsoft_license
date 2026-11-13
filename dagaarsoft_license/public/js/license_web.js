@@ -46,16 +46,30 @@
 		var foot = el("div", "display:flex;align-items:center;gap:14px;padding:0 28px 14px;color:#2d5ea8;font-size:14px");
 		foot.appendChild(el("div", "flex:1;height:1px;background:#dfe5ee")); foot.appendChild(el("span", "", "Dagaar Technology")); foot.appendChild(el("div", "flex:1;height:1px;background:#dfe5ee"));
 		var go = el("div", "text-align:center;padding:0 28px 18px");
-		var link = el("button", "background:none;border:0;color:#5b6b80;text-decoration:underline;cursor:pointer;font-size:14px", closed ? "Maamulaha / Administrator" : "Sii wad gelitaanka / Continue to sign in");
+		var link = el("button", "background:none;border:0;color:#5b6b80;text-decoration:underline;cursor:pointer;font-size:14px", "Xidh / Close");
 		link.type = "button"; link.onclick = function () { veil.remove(); }; go.appendChild(link);
 		card.appendChild(head); card.appendChild(body); card.appendChild(row); card.appendChild(foot); card.appendChild(go);
 		veil.appendChild(card);
 		(document.body || document.documentElement).appendChild(veil);
 	}
+	// Nothing shows before sign-in. Only when the site is closed (after the read-only period): when someone
+	// enters a user and password and presses sign in, this box appears instead of signing in.
 	fetch("/api/method/dagaarsoft_license.api.sign_in_notice", { headers: { Accept: "application/json" } })
 		.then(function (r) { return r.json(); }).then(function (j) {
 			var d = j.message || {};
-			if (d.state !== "Suspended" && d.state !== "Read Only") return;
-			if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function () { show(d); }); else show(d);
+			if (d.state !== "Suspended") return;
+			function intercept(e) {
+				var t = e.target;
+				var form = t && t.closest ? t.closest("form") : null;
+				var isLogin = form ? (form.classList.contains("form-login") || form.querySelector("#login_password, input[type=password]"))
+					: (t && t.closest && t.closest(".btn-login"));
+				if (!isLogin) return;
+				if (e.type === "keydown" && e.key !== "Enter") return;
+				e.preventDefault(); e.stopImmediatePropagation();
+				show(d);
+			}
+			document.addEventListener("submit", intercept, true);
+			document.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest(".btn-login, .form-login button[type=submit]")) intercept(e); }, true);
+			document.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target && e.target.closest && e.target.closest(".form-login")) intercept(e); }, true);
 		}).catch(function () {});
 })();

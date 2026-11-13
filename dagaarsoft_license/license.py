@@ -5,9 +5,11 @@ States
   Active     paid: no restrictions
   Reminder   an invoice is due: the license box pops up (first open, then every hour)
   Grace      past due: same, with the closing date
-  Read Only  users can open and view everything but cannot change anything
+  Read Only  everyone (Administrator included) can open and view everything but change nothing
              (until read_only_until; then the site is treated as Suspended)
-  Suspended  sign-in is closed for everyone except Administrator
+  Suspended  everyone is signed out and cannot sign in (Administrator included); all users except
+           Administrator and the control server's API user are switched off, and switched back on
+           when the state changes again
 """
 
 import frappe
@@ -64,15 +66,18 @@ def guard_write(doc, method=None):
 
 
 def on_session_creation(login_manager=None):
-	if effective_state() == "Suspended" and frappe.session.user != "Administrator":
-		frappe.local.login_manager.logout() if hasattr(frappe.local, "login_manager") else None
+	"""Suspended: nobody signs in, Administrator included."""
+	if effective_state() == "Suspended":
+		if hasattr(frappe.local, "login_manager"):
+			frappe.local.login_manager.logout()
 		frappe.throw(_(CLOSED_MSG), frappe.AuthenticationError, title=_("DagaarSoft License"))
 
 
 def before_request():
-	"""Suspended: people already signed in are signed out (Administrator excepted)."""
+	"""Suspended: everyone already signed in is signed out (Administrator included). The Dagaar
+	control server's API-key calls have no session, so they still work."""
 	user = getattr(frappe.session, "user", "Guest")
-	if user in ("Guest", "Administrator") or effective_state() != "Suspended":
+	if user == "Guest" or effective_state() != "Suspended":
 		return
 	path = frappe.request.path if getattr(frappe, "request", None) else ""
 	if path in ("/api/method/logout", "/login") or path.startswith("/assets/"):
@@ -92,6 +97,7 @@ def public(lic=None):
 	return {
 		"state": effective_state(lic),
 		"plan": lic.get("plan") or ("Free License" if (lic.get("state") or "Free") == "Free" else None),
+		"plan_features": [x.strip(" -•\t") for x in (lic.get("plan_features") or "").splitlines() if x.strip(" -•\t")],
 		"customer_name": lic.get("customer_name"),
 		"message_so": lic.get("message_so"),
 		"message_en": lic.get("message_en"),
@@ -135,3 +141,34 @@ def after_install():
 		nav.flags.ignore_permissions = True
 		nav.save()
 	frappe.db.commit()
+
+
+def switch_users(state, caller):
+	"""Suspended: switch off every user except Administrator, Guest and the caller (the control
+	server's API user, whose key must keep working). Any other state: switch them back on."""
+	import json
+
+	import frappe.sessions
+
+	doc = frappe.get_single(DOCTYPE)
+	saved = json.loads(doc.disabled_users or "[]")
+	frappe.flags.dagaarsoft_license_cleanup = True
+	try:
+		if state == "Suspended":
+			keep = {"Administrator", "Guest", caller}
+			users = frappe.get_all("User", filters={"enabled": 1, "name": ("not in", list(keep))}, pluck="name")
+			if users:
+				saved = sorted(set(saved) | set(users))
+				frappe.db.set_single_value(DOCTYPE, "disabled_users", json.dumps(saved))
+				frappe.db.commit()  # saved first: a failure half way never loses who must come back
+				for user in users:
+					frappe.db.set_value("User", user, "enabled", 0)
+					frappe.sessions.clear_sessions(user=user, force=True)
+		elif saved:
+			for user in saved:
+				if frappe.db.exists("User", user):
+					frappe.db.set_value("User", user, "enabled", 1)
+			frappe.db.set_single_value(DOCTYPE, "disabled_users", None)
+		frappe.cache.delete_key("enabled_users")
+	finally:
+		frappe.flags.dagaarsoft_license_cleanup = False

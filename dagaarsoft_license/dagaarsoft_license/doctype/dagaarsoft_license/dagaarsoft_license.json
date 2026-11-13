@@ -6,6 +6,7 @@
  "field_order": [
   "state",
   "plan",
+  "plan_features",
   "customer_name",
   "cb1",
   "last_update",
@@ -21,7 +22,9 @@
   "contact",
   "sb2",
   "message_so",
-  "message_en"
+  "message_en",
+  "sb3",
+  "disabled_users"
  ],
  "fields": [
   {
@@ -36,6 +39,11 @@
    "fieldname": "plan",
    "fieldtype": "Data",
    "label": "Plan"
+  },
+  {
+   "fieldname": "plan_features",
+   "fieldtype": "Small Text",
+   "label": "Plan Features"
   },
   {
    "fieldname": "customer_name",
@@ -118,11 +126,23 @@
    "fieldname": "message_en",
    "fieldtype": "Small Text",
    "label": "Message (English)"
+  },
+  {
+   "collapsible": 1,
+   "fieldname": "sb3",
+   "fieldtype": "Section Break",
+   "label": "Switched Off While Suspended"
+  },
+  {
+   "fieldname": "disabled_users",
+   "fieldtype": "Long Text",
+   "label": "Users",
+   "read_only": 1
   }
  ],
  "issingle": 1,
  "links": [],
- "modified": "2026-11-13 10:00:00.000000",
+ "modified": "2026-11-13 12:00:00.000000",
  "modified_by": "Administrator",
  "module": "DagaarSoft License",
  "name": "DagaarSoft License",

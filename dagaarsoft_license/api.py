@@ -3,7 +3,7 @@ from frappe import _
 
 from dagaarsoft_license import license as lic
 
-FIELDS = ("state", "plan", "customer_name", "message_so", "message_en", "amount", "currency", "due_date",
+FIELDS = ("state", "plan", "plan_features", "customer_name", "message_so", "message_en", "amount", "currency", "due_date",
           "read_only_until", "pay_url", "help_url", "payment_methods", "contact")
 
 
@@ -28,6 +28,10 @@ def update(**values):
 	doc.flags.ignore_permissions = True
 	doc.save()
 	frappe.clear_document_cache(lic.DOCTYPE, lic.DOCTYPE)
+	frappe.local.dagaarsoft_license = None
+	lic.switch_users(lic.effective_state(doc.as_dict()), frappe.session.user)
+	frappe.clear_document_cache(lic.DOCTYPE, lic.DOCTYPE)
+	frappe.local.dagaarsoft_license = None
 	return lic.public()
 
 
