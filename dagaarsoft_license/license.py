@@ -71,6 +71,13 @@ def on_session_creation(login_manager=None):
 		if hasattr(frappe.local, "login_manager"):
 			frappe.local.login_manager.logout()
 		frappe.throw(_(CLOSED_MSG), frappe.AuthenticationError, title=_("DagaarSoft License"))
+	# A fresh sign-in shows the license box at once when a payment is due (then every hour).
+	_cache().set_value(f"dagaarsoft_license:show:{frappe.session.user}", 1, expires_in_sec=600)
+
+
+def _cache():
+	# frappe.cache is an object on newer Frappe and a function on older versions
+	return frappe.cache() if callable(frappe.cache) else frappe.cache
 
 
 def before_request():
@@ -117,6 +124,10 @@ def public(lic=None):
 def boot_session(bootinfo):
 	if frappe.session.user != "Guest":
 		bootinfo.dagaarsoft_license = public()
+		key = f"dagaarsoft_license:show:{frappe.session.user}"
+		if _cache().get_value(key):
+			bootinfo.dagaarsoft_license["show_now"] = 1
+			_cache().delete_value(key)
 
 
 def after_install():
@@ -170,6 +181,6 @@ def switch_users(state, caller):
 					frappe.db.set_value("User", user, "enabled", 1)
 			frappe.db.set_single_value(DOCTYPE, "disabled_users", None)
 		# frappe.cache is an object on newer Frappe and a function on older versions
-		(frappe.cache() if callable(frappe.cache) else frappe.cache).delete_key("enabled_users")
+		_cache().delete_key("enabled_users")
 	finally:
 		frappe.flags.dagaarsoft_license_cleanup = False

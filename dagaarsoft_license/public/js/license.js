@@ -105,7 +105,9 @@
 		if (!d || !(POPUP_STATES.includes(d.state) || renewing(d))) return;
 		let last = 0;
 		try { last = Number(localStorage.getItem("dsl_last_popup") || 0); } catch (e) { /* ignore */ }
-		if (Date.now() - last >= (renewing(d) ? DAY : HOUR)) {
+		const just_signed_in = d.show_now && !(renewing(d));
+		d.show_now = 0;
+		if (just_signed_in || Date.now() - last >= (renewing(d) ? DAY : HOUR)) {
 			frappe.call("dagaarsoft_license.api.status").then((r) => {
 				frappe.boot.dagaarsoft_license = r.message;
 				if (POPUP_STATES.includes(r.message.state) || renewing(r.message)) show(r.message);
