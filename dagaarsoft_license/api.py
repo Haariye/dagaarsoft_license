@@ -67,7 +67,8 @@ def cleanup_legacy(users=None, announcement=None):
 			ws.flags.ignore_permissions = True
 			ws.save()
 		nav = frappe.get_single("Navbar Settings")
-		if "<!-- dagaar-service -->" in (nav.announcement_widget or ""):
+		# older Frappe versions have no announcement field: nothing to clean there
+		if nav.meta.has_field("announcement_widget") and "<!-- dagaar-service -->" in (nav.get("announcement_widget") or ""):
 			nav.announcement_widget = announcement or ""
 			nav.flags.ignore_permissions = True
 			nav.save()
