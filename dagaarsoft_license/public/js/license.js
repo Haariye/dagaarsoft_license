@@ -3,6 +3,9 @@
 (function () {
 	const POPUP_STATES = ["Reminder", "Grace", "Read Only", "Suspended"];
 	const HOUR = 60 * 60 * 1000;
+	const DAY = 24 * HOUR;
+	// Active with an amount due = the paid period ends soon: a gentle reminder once a day, with "Renew now".
+	const renewing = (d) => d && d.state === "Active" && Number(d.amount) > 0;
 	const LABEL = {
 		Free: ["Liisan Bilaash ah", "Free License", "ok"], Active: ["Firfircoon", "Active", "ok"],
 		Reminder: ["Lacag-bixin ayaa la gaadhay", "Payment Due", "warn"], Grace: ["Muddo Dheeraad ah", "Grace Period", "warn"],
@@ -48,12 +51,13 @@
 	function render(d) {
 		const [so, en, tone] = LABEL[d.state] || LABEL.Free;
 		const msg = DEFAULT_MSG[d.state] || DEFAULT_MSG.Free;
-		const due = POPUP_STATES.includes(d.state);
+		const renew = renewing(d);
+		const due = POPUP_STATES.includes(d.state) || renew;
 		const amount = d.amount ? `${esc(d.currency || "")} ${Number(d.amount).toFixed(2)}` : "";
 		const logo = "/assets/dagaarsoft_license/images/logo.png";
 		return `<div class="dsl-head">
 			<div class="dsl-icon"><img src="${esc(logo)}" alt=""></div><div class="dsl-bar"></div>
-			<div><div class="dsl-title">DagaarSoft License</div><div class="dsl-sub">${due ? "Cusboonaysiin ayaa loo baahan yahay / Renewal required" : "Xaaladda liisanka / License status"}</div></div>
+			<div><div class="dsl-title">DagaarSoft License</div><div class="dsl-sub">${renew ? "Cusboonaysiin dhow / Renewal soon" : due ? "Cusboonaysiin ayaa loo baahan yahay / Renewal required" : "Xaaladda liisanka / License status"}</div></div>
 			<button class="dsl-x" type="button" aria-label="Close">×</button></div>
 		<div class="dsl-body">
 			<div class="dsl-grid">
@@ -68,7 +72,7 @@
 			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad? La xidhiidh ${esc(d.contact || "Dagaar Technology")}. / Need help? Contact ${esc(d.contact || "Dagaar Technology")}.</span></div>
 		</div>
 		<div class="dsl-foot">
-			${due ? `<button class="btn btn-primary dsl-activate" type="button">Activate License</button>` : ""}
+			${due ? `<button class="btn btn-primary dsl-activate" type="button">${renew ? "Cusboonaysii hadda / Renew now" : "Activate License"}</button>` : ""}
 			${d.help_url ? `<button class="btn btn-default dsl-contact" type="button">La xidhiidh Dagaar</button>` : ""}
 			<button class="btn btn-default dsl-close" type="button">Close</button>
 		</div>`;
@@ -98,16 +102,19 @@
 
 	function maybe_popup() {
 		const d = frappe.boot && frappe.boot.dagaarsoft_license;
-		if (!d || !POPUP_STATES.includes(d.state)) return;
+		if (!d || !(POPUP_STATES.includes(d.state) || renewing(d))) return;
 		let last = 0;
 		try { last = Number(localStorage.getItem("dsl_last_popup") || 0); } catch (e) { /* ignore */ }
-		if (Date.now() - last >= HOUR) {
+		if (Date.now() - last >= (renewing(d) ? DAY : HOUR)) {
 			frappe.call("dagaarsoft_license.api.status").then((r) => {
 				frappe.boot.dagaarsoft_license = r.message;
-				if (POPUP_STATES.includes(r.message.state)) show(r.message);
+				if (POPUP_STATES.includes(r.message.state) || renewing(r.message)) show(r.message);
 			});
 		}
 	}
+
+	// The payment page tells us when the payment went through: reload so the site is usable at once.
+	window.addEventListener("message", (e) => { if (e.data === "dagaar-paid") setTimeout(() => location.reload(), 1500); });
 
 	window.dagaarsoft_license = { show: () => show() };
 	$(document).on("app_ready", () => { setTimeout(maybe_popup, 1500); setInterval(maybe_popup, 60 * 1000); });

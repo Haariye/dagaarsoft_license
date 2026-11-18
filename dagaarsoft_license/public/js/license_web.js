@@ -4,6 +4,7 @@
 	function dropOld() { var o = document.getElementById("dagaar-service"); if (o) o.remove(); }
 	try { new MutationObserver(dropOld).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) { /* ignore */ }
 	document.addEventListener("DOMContentLoaded", dropOld);
+	window.addEventListener("message", function (e) { if (e.data === "dagaar-paid") setTimeout(function () { location.reload(); }, 1500); });
 	var p = location.pathname.replace(/\/$/, "");
 	if (p !== "/login" && p !== "") return;
 	function el(t, css, txt) { var e = document.createElement(t); if (css) e.style.cssText = css; if (txt) e.textContent = txt; return e; }
