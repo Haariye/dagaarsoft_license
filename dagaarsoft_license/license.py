@@ -169,6 +169,7 @@ def switch_users(state, caller):
 				if frappe.db.exists("User", user):
 					frappe.db.set_value("User", user, "enabled", 1)
 			frappe.db.set_single_value(DOCTYPE, "disabled_users", None)
-		frappe.cache.delete_key("enabled_users")
+		# frappe.cache is an object on newer Frappe and a function on older versions
+		(frappe.cache() if callable(frappe.cache) else frappe.cache).delete_key("enabled_users")
 	finally:
 		frappe.flags.dagaarsoft_license_cleanup = False
