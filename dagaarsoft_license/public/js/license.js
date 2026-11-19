@@ -7,17 +7,23 @@
 	// Active with an amount due = the paid period ends soon: a gentle reminder once a day, with "Renew now".
 	const renewing = (d) => d && d.state === "Active" && Number(d.amount) > 0;
 	const LABEL = {
-		Free: ["Liisan Bilaash ah", "Free License", "ok"], Active: ["Firfircoon", "Active", "ok"],
-		Reminder: ["Lacag-bixin ayaa la gaadhay", "Payment Due", "warn"], Grace: ["Muddo Dheeraad ah", "Grace Period", "warn"],
-		"Read Only": ["Akhris-keliya", "Read Only", "bad"], Suspended: ["La Hakiyay", "Suspended", "bad"],
+		Free: ["Liisan Bilaash", "Free License", "ok"], Active: ["Shaqaynaya", "Active", "ok"],
+		Reminder: ["Lacag-bixin", "Payment Due", "warn"], Grace: ["Dib u dhac", "Overdue", "warn"],
+		"Read Only": ["Akhris-keliya", "Read Only", "bad"], Suspended: ["La joojiyay", "Suspended", "bad"],
 	};
 	const DEFAULT_MSG = {
-		Free: ["Nidaamkan wuxuu ku shaqaynayaa Liisan Bilaash ah oo Dagaar Technology bixisay.", "This system runs on a Free License from Dagaar Technology."],
-		Active: ["Liisankaagu waa firfircoon yahay. Mahadsanid.", "Your license is active. Thank you."],
-		Reminder: ["Waqtiga cusboonaysiinta rukunkaaga waa la gaadhay. Fadlan bixi lacagta si adeeggu kuugu sii socdo.", "Your subscription renewal is due. Please pay to keep your service running."],
-		Grace: ["Lacag-bixinta rukunkaaga waa dib u dhacday. Fadlan bixi si aan adeegga loo xadidin.", "Your subscription payment is overdue. Please pay to avoid restrictions."],
-		"Read Only": ["Nidaamku hadda waa akhris-keliya: wax waad arki kartaa laakiin wax lama beddeli karo ilaa lacagta la bixiyo.", "The system is read-only: you can view everything but cannot make changes until payment is made."],
-		Suspended: ["Adeegga waa la hakiyay ilaa lacagta la bixiyo.", "The service is suspended until payment is made."],
+		Free: ["Liisan bilaash ah oo Dagaar Technology.", "Free license from Dagaar Technology."],
+		Active: ["Adeeggaagu wuu shaqaynayaa.", "Your service is active."],
+		Reminder: ["Fadlan bixi lacagta si adeeggu u sii socdo.", "Please pay to keep your service running."],
+		Grace: ["Lacag-bixintu waa dib u dhacday. Fadlan bixi.", "Payment is overdue. Please pay."],
+		"Read Only": ["Nidaamku waa akhris-keliya ilaa lacagta la bixiyo.", "Read-only until payment is made."],
+		Suspended: ["Adeegga waa la joojiyay ilaa lacagta la bixiyo.", "Service suspended until payment is made."],
+	};
+	// Dates the client sees: 20 Nov 2026
+	const short_date = (v) => {
+		if (!v) return "";
+		const d = new Date(String(v).slice(0, 10) + "T00:00:00");
+		return isNaN(d) ? String(v) : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 	};
 	const css = `
 	.dsl-modal .modal-dialog{max-width:700px;width:90vw}
@@ -57,7 +63,7 @@
 		const logo = "/assets/dagaarsoft_license/images/logo.png";
 		return `<div class="dsl-head">
 			<div class="dsl-icon"><img src="${esc(logo)}" alt=""></div><div class="dsl-bar"></div>
-			<div><div class="dsl-title">DagaarSoft License</div><div class="dsl-sub">${renew ? "Cusboonaysiin dhow / Renewal soon" : due ? "Cusboonaysiin ayaa loo baahan yahay / Renewal required" : "Xaaladda liisanka / License status"}</div></div>
+			<div><div class="dsl-title">DagaarSoft License</div><div class="dsl-sub">${renew ? "Cusboonaysiin dhow / Renewal soon" : due ? "Lacag-bixin / Payment due" : "Xaaladda liisanka / License status"}</div></div>
 			<button class="dsl-x" type="button" aria-label="Close">×</button></div>
 		<div class="dsl-body">
 			<div class="dsl-grid">
@@ -67,14 +73,14 @@
 			</div>
 			<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>
 			<p class="dsl-msg en">${esc(d.message_en || msg[1])}</p>
-			${amount ? `<div class="dsl-due">Lacagta kugu maqan / Amount due: <b>${amount}</b>${d.read_only_until && d.state === "Read Only" ? ` · Akhris-keliya ilaa / Read-only until ${esc(d.read_only_until)}` : ""}</div>` : ""}
+			${amount ? `<div class="dsl-due">Lacagta / Amount: <b>${amount}</b>${d.read_only_until && d.state === "Read Only" ? ` · Akhris-keliya ilaa / Read-only until ${esc(short_date(d.read_only_until))}` : ""}</div>` : ""}
 			<div class="dsl-pay">${(d.methods || []).map((m) => `<button type="button" data-m="${esc(m)}">${esc(m)}</button>`).join("")}</div>
-			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad? La xidhiidh ${esc(d.contact || "Dagaar Technology")}. / Need help? Contact ${esc(d.contact || "Dagaar Technology")}.</span></div>
+			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad / Help: ${esc(d.contact || "Dagaar Technology")}</span></div>
 		</div>
 		<div class="dsl-foot">
-			${due ? `<button class="btn btn-primary dsl-activate" type="button">${renew ? "Cusboonaysii hadda / Renew now" : "Activate License"}</button>` : ""}
+			${due ? `<button class="btn btn-primary dsl-activate" type="button">${renew ? "Cusboonaysii / Renew" : "Bixi / Pay"}</button>` : ""}
 			${d.help_url ? `<button class="btn btn-default dsl-contact" type="button">La xidhiidh Dagaar</button>` : ""}
-			<button class="btn btn-default dsl-close" type="button">Close</button>
+			<button class="btn btn-default dsl-close" type="button">Xidh / Close</button>
 		</div>`;
 	}
 

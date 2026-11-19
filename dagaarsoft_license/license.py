@@ -27,12 +27,8 @@ ALWAYS_ALLOWED = {
 	"Desktop Icon", "Workspace", "User Permission", "Sessions", "Energy Point Log", "Success Action",
 	"Integration Request", "RQ Job",
 }
-READ_ONLY_MSG = ("Nidaamku hadda wuxuu ku jiraa xaalad akhris-keliya ah (read-only) sababtoo ah lacag-bixinta "
-                 "rukunka ayaa dib u dhacday. Wax waad arki kartaa, laakiin wax lama beddeli karo. "
-                 "/ The system is read-only until the subscription is paid: you can view but not change anything.")
-CLOSED_MSG = ("Adeegga waa la hakiyay sababtoo ah lacag-bixinta rukunka ayaa dib u dhacday. Fadlan la xidhiidh "
-              "Dagaar Technology. / The service is suspended until the subscription is paid. Please contact "
-              "Dagaar Technology.")
+READ_ONLY_MSG = "Nidaamku waa akhris-keliya ilaa lacagta la bixiyo. / Read-only until payment is made."
+CLOSED_MSG = "Adeegga waa la joojiyay ilaa lacagta la bixiyo. / Service suspended until payment is made."
 
 
 def get():
