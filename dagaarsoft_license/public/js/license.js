@@ -94,25 +94,35 @@
 			});
 			dialog.$body.find(".dsl-contact").on("click", () => window.open(d.help_url, "_blank"));
 			dialog.show();
-			try { localStorage.setItem("dsl_last_popup", String(Date.now())); } catch (e) { /* ignore */ }
 		};
 		if (data) return open(data);
 		frappe.call("dagaarsoft_license.api.status").then((r) => open(r.message || {}));
 	}
 
+	// Payment due / grace / read-only: at most twice a day (4 hours apart). Renewal soon: once a day.
+	const TIMES_A_DAY = 2;
+	const GAP = 4 * HOUR;
+	function shown_today() {
+		try {
+			const v = JSON.parse(localStorage.getItem("dsl_popups") || "{}");
+			return v.day === new Date().toDateString() ? v : { day: new Date().toDateString(), count: 0, last: 0 };
+		} catch (e) { return { day: new Date().toDateString(), count: 0, last: 0 }; }
+	}
+	function note_shown() {
+		const v = shown_today();
+		v.count += 1; v.last = Date.now();
+		try { localStorage.setItem("dsl_popups", JSON.stringify(v)); } catch (e) { /* ignore */ }
+	}
 	function maybe_popup() {
 		const d = frappe.boot && frappe.boot.dagaarsoft_license;
 		if (!d || !(POPUP_STATES.includes(d.state) || renewing(d))) return;
-		let last = 0;
-		try { last = Number(localStorage.getItem("dsl_last_popup") || 0); } catch (e) { /* ignore */ }
-		const just_signed_in = d.show_now && !(renewing(d));
-		d.show_now = 0;
-		if (just_signed_in || Date.now() - last >= (renewing(d) ? DAY : HOUR)) {
-			frappe.call("dagaarsoft_license.api.status").then((r) => {
-				frappe.boot.dagaarsoft_license = r.message;
-				if (POPUP_STATES.includes(r.message.state) || renewing(r.message)) show(r.message);
-			});
-		}
+		const v = shown_today();
+		const allowed = renewing(d) ? 1 : TIMES_A_DAY;
+		if (v.count >= allowed || (v.last && Date.now() - v.last < GAP)) return;
+		frappe.call("dagaarsoft_license.api.status").then((r) => {
+			frappe.boot.dagaarsoft_license = r.message;
+			if (POPUP_STATES.includes(r.message.state) || renewing(r.message)) { show(r.message); note_shown(); }
+		});
 	}
 
 	// The payment page tells us when the payment went through: reload so the site is usable at once.
