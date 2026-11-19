@@ -99,35 +99,27 @@
 		frappe.call("dagaarsoft_license.api.status").then((r) => open(r.message || {}));
 	}
 
-	// Payment due / grace / read-only: at most twice a day (4 hours apart). Renewal soon: once a day.
-	const TIMES_A_DAY = 2;
-	const GAP = 4 * HOUR;
-	function shown_today() {
-		try {
-			const v = JSON.parse(localStorage.getItem("dsl_popups") || "{}");
-			return v.day === new Date().toDateString() ? v : { day: new Date().toDateString(), count: 0, last: 0 };
-		} catch (e) { return { day: new Date().toDateString(), count: 0, last: 0 }; }
-	}
-	function note_shown() {
-		const v = shown_today();
-		v.count += 1; v.last = Date.now();
-		try { localStorage.setItem("dsl_popups", JSON.stringify(v)); } catch (e) { /* ignore */ }
-	}
-	function maybe_popup() {
+	// Pop-ups are counted on the server (twice a day, 4 hours apart, the first right after signing in),
+	// so clearing the browser cache does not show the box again.
+	function maybe_popup(signed_in) {
 		const d = frappe.boot && frappe.boot.dagaarsoft_license;
 		if (!d || !(POPUP_STATES.includes(d.state) || renewing(d))) return;
-		const v = shown_today();
-		const allowed = renewing(d) ? 1 : TIMES_A_DAY;
-		if (v.count >= allowed || (v.last && Date.now() - v.last < GAP)) return;
-		frappe.call("dagaarsoft_license.api.status").then((r) => {
-			frappe.boot.dagaarsoft_license = r.message;
-			if (POPUP_STATES.includes(r.message.state) || renewing(r.message)) { show(r.message); note_shown(); }
-		});
+		frappe.call({ method: "dagaarsoft_license.api.popup_check", args: { signed_in: signed_in ? 1 : 0 } })
+			.then((r) => {
+				const m = r.message || {};
+				if (!m.show) return;
+				frappe.boot.dagaarsoft_license = m.license;
+				show(m.license);
+			});
 	}
 
 	// The payment page tells us when the payment went through: reload so the site is usable at once.
 	window.addEventListener("message", (e) => { if (e.data === "dagaar-paid") setTimeout(() => location.reload(), 1500); });
 
 	window.dagaarsoft_license = { show: () => show() };
-	$(document).on("app_ready", () => { setTimeout(maybe_popup, 1500); setInterval(maybe_popup, 60 * 1000); });
+	$(document).on("app_ready", () => {
+		const d = frappe.boot && frappe.boot.dagaarsoft_license;
+		setTimeout(() => maybe_popup(!!(d && d.show_now)), 1500);
+		setInterval(() => maybe_popup(false), 15 * 60 * 1000);
+	});
 })();

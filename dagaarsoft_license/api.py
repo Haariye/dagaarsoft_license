@@ -81,3 +81,28 @@ def cleanup_legacy(users=None, announcement=None):
 		return {"ok": True, "users_enabled": enabled}
 	finally:
 		frappe.flags.dagaarsoft_license_cleanup = False
+
+
+@frappe.whitelist()
+def popup_check(signed_in=0):
+	"""Should the license box pop up now for this user? Counted on the server (per user, per day), so
+	clearing the browser cache does not bring it back. At most twice a day, 4 hours apart; the first
+	one right after signing in."""
+	from frappe.utils import cint, nowdate
+
+	data = lic.public()
+	due = data["state"] in ("Reminder", "Grace", "Read Only", "Suspended") or (
+		data["state"] == "Active" and float(data.get("amount") or 0) > 0)
+	if not due:
+		return {"show": False}
+	import time
+
+	key = f"dagaarsoft_license:popups:{frappe.session.user}:{nowdate()}"
+	cache = lic._cache()
+	seen = cache.get_value(key) or {"count": 0, "last": 0}
+	gap_ok = (time.time() - seen["last"]) >= 4 * 3600
+	if seen["count"] >= 2 or not (cint(signed_in) or gap_ok) or (seen["count"] and not gap_ok):
+		return {"show": False}
+	seen = {"count": seen["count"] + 1, "last": time.time()}
+	cache.set_value(key, seen, expires_in_sec=2 * 24 * 3600)
+	return {"show": True, "license": data}
