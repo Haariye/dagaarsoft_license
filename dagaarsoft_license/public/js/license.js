@@ -57,8 +57,10 @@
 	function render(d) {
 		const [so, en, tone] = LABEL[d.state] || LABEL.Free;
 		const msg = DEFAULT_MSG[d.state] || DEFAULT_MSG.Free;
-		const renew = renewing(d);
-		const due = POPUP_STATES.includes(d.state) || renew;
+		// audience false: the payment message is not for this user (only the status is shown)
+		const quiet = d.audience === false;
+		const renew = !quiet && renewing(d);
+		const due = !quiet && (POPUP_STATES.includes(d.state) || renew);
 		const amount = d.amount ? `${esc(d.currency || "")} ${Number(d.amount).toFixed(2)}` : "";
 		const logo = "/assets/dagaarsoft_license/images/logo.png";
 		return `<div class="dsl-head">
@@ -71,8 +73,8 @@
 				<div><div class="dsl-k">Plan</div><div class="dsl-v">${esc((d.plan_features && d.plan_features[0]) || d.plan || en)}</div>${(d.plan_features || []).slice(1).map((f) => `<div class="dsl-f">${esc(f)}</div>`).join("")}</div>
 				<div><div class="dsl-k">License Status</div><div class="dsl-pill ${tone}">${esc(en)}</div></div>
 			</div>
-			<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>
-			<p class="dsl-msg en">${esc(d.message_en || msg[1])}</p>
+			${quiet ? "" : `<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>
+			<p class="dsl-msg en">${esc(d.message_en || msg[1])}</p>`}
 			${amount ? `<div class="dsl-due">Lacagta / Amount: <b>${amount}</b>${d.read_only_until && d.state === "Read Only" ? ` · Akhris-keliya ilaa / Read-only until ${esc(short_date(d.read_only_until))}` : ""}</div>` : ""}
 			<div class="dsl-pay">${(d.methods || []).map((m) => `<button type="button" data-m="${esc(m)}">${esc(m)}</button>`).join("")}</div>
 			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad / Help: ${esc(d.contact || "Dagaar Technology")}</span></div>

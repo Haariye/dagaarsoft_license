@@ -94,6 +94,92 @@ def before_request():
 	raise RequestRedirect("/login")
 
 
+# ---------------------------------------------------------------- who sees the messages
+# The Dagaar control server sends, per state, steps of roles (api.update audience + state_since).
+# A step is active once `after_days` days have passed since the state began; "Add" adds its roles
+# to the earlier steps, "Replace" drops them. No steps for a state = everyone sees the message.
+# Suspended: always everyone. System Manager and Administrator always see it. Only who SEES the
+# message changes: read-only and suspension themselves apply to everyone as before.
+AUDIENCE_KEY = "dagaarsoft_license_audience"
+STATE_SINCE_KEY = "dagaarsoft_license_state_since"
+# The control server's alert names for each state here (first one found is used).
+AUDIENCE_ALIASES = {
+	"Renewal Soon": ("Renewal Soon", "Active"),
+	"Reminder": ("Reminder", "Payment Due"),
+	"Grace": ("Grace",),
+	"Read Only": ("Read Only",),
+}
+
+
+def audience():
+	import json
+
+	try:
+		value = json.loads(frappe.db.get_default(AUDIENCE_KEY) or "{}")
+		return value if isinstance(value, dict) else {}
+	except Exception:
+		return {}
+
+
+def state_since():
+	return frappe.db.get_default(STATE_SINCE_KEY) or None
+
+
+def _rows_for(state, amount=0, data=None):
+	data = audience() if data is None else data
+	key = "Renewal Soon" if state == "Active" and float(amount or 0) > 0 else state
+	for name in AUDIENCE_ALIASES.get(key, ()):
+		if data.get(name):
+			return data[name]
+	return []
+
+
+def active_roles(state=None, amount=None, today=None, data=None, since=None):
+	"""Roles that see the message now; None = everyone."""
+	lic = get()
+	state = state or effective_state(lic)
+	if state == "Suspended":
+		return None
+	rows = _rows_for(state, lic.get("amount") if amount is None else amount, data)
+	if not rows:
+		return None
+	since = state_since() if since is None else since
+	try:
+		days = (getdate(today or nowdate()) - getdate(str(since)[:10])).days if since else 0
+	except Exception:
+		days = 0
+	roles = set()
+	for row in sorted(rows, key=lambda r: (int(r.get("after_days") or 0), int(r.get("step") or 0))):
+		if int(row.get("after_days") or 0) > days:
+			continue
+		names = row.get("roles") or []
+		if isinstance(names, str):
+			names = names.split(",")
+		names = {n.strip() for n in names if n and n.strip()}
+		roles = names if (row.get("mode") or "Add") == "Replace" else roles | names
+	return roles
+
+
+def can_see(user=None, roles=None):
+	user = user or frappe.session.user
+	wanted = active_roles() if roles is None else roles
+	if wanted is None or user == "Administrator":
+		return True
+	have = set(frappe.get_roles(user))
+	return "System Manager" in have or bool(wanted & have)
+
+
+def public_for_user(user=None):
+	"""The license box for this user: without the payment message when the message is not for them."""
+	data = public()
+	if can_see(user):
+		data["audience"] = True
+		return data
+	data.update({"audience": False, "message_so": None, "message_en": None, "amount": None, "due_date": None,
+	             "pay_url": None})
+	return data
+
+
 def public(lic=None):
 	"""What the license box shows (no secrets)."""
 	lic = lic or get()
@@ -119,11 +205,15 @@ def public(lic=None):
 
 def boot_session(bootinfo):
 	if frappe.session.user != "Guest":
-		bootinfo.dagaarsoft_license = public()
+		bootinfo.dagaarsoft_license = public_for_user()
 		key = f"dagaarsoft_license:show:{frappe.session.user}"
 		if _cache().get_value(key):
-			bootinfo.dagaarsoft_license["show_now"] = 1
+			if bootinfo.dagaarsoft_license.get("audience"):
+				bootinfo.dagaarsoft_license["show_now"] = 1
 			_cache().delete_value(key)
+	from dagaarsoft_license import whitelabel
+
+	whitelabel.boot_session(bootinfo)
 
 
 def after_install():

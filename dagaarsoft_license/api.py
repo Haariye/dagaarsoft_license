@@ -9,7 +9,7 @@ FIELDS = ("state", "plan", "plan_features", "customer_name", "message_so", "mess
 
 @frappe.whitelist()
 def status():
-	return lic.public()
+	return lic.public_for_user()
 
 
 @frappe.whitelist(methods=["POST"])
@@ -21,6 +21,7 @@ def update(**values):
 	if state and state not in lic.STATES:
 		frappe.throw(_("Unknown state."))
 	doc = frappe.get_single(lic.DOCTYPE)
+	_save_extras(values, doc.state)
 	for key in FIELDS:
 		if key in values:
 			doc.set(key, values[key] or None)
@@ -33,6 +34,31 @@ def update(**values):
 	frappe.clear_document_cache(lic.DOCTYPE, lic.DOCTYPE)
 	frappe.local.dagaarsoft_license = None
 	return lic.public()
+
+
+def _save_extras(values, old_state):
+	"""Kept as site defaults (no new DocType fields, so no migrate is needed):
+	audience  {"<state>": [{"step", "roles", "after_days", "mode"}]}: who sees the messages
+	state_since  "YYYY-MM-DD": the day the current state began (today when the state changes without it)
+	whitelabel  0/1: DagaarSoft names instead of ERPNext / Frappe (site_config dagaarsoft_whitelabel wins)"""
+	import json
+
+	if "audience" in values:
+		aud = values.get("audience") or {}
+		if isinstance(aud, str):
+			aud = json.loads(aud or "{}")
+		if not isinstance(aud, dict):
+			frappe.throw(_("audience must be an object."))
+		frappe.db.set_default(lic.AUDIENCE_KEY, json.dumps(aud))
+	if values.get("state_since"):
+		frappe.db.set_default(lic.STATE_SINCE_KEY, str(frappe.utils.getdate(str(values["state_since"])[:10])))
+	elif values.get("state") and values.get("state") != old_state:
+		frappe.db.set_default(lic.STATE_SINCE_KEY, frappe.utils.nowdate())
+	if "whitelabel" in values:
+		value = "1" if frappe.utils.cint(values.get("whitelabel")) else "0"
+		if frappe.db.get_default("dagaarsoft_whitelabel") != value:
+			frappe.db.set_default("dagaarsoft_whitelabel", value)
+			frappe.clear_cache()
 
 
 @frappe.whitelist(allow_guest=True)
@@ -93,7 +119,7 @@ def popup_check(signed_in=0):
 	data = lic.public()
 	due = data["state"] in ("Reminder", "Grace", "Read Only", "Suspended") or (
 		data["state"] == "Active" and float(data.get("amount") or 0) > 0)
-	if not due:
+	if not due or not lic.can_see():
 		return {"show": False}
 	import time
 
@@ -105,4 +131,5 @@ def popup_check(signed_in=0):
 		return {"show": False}
 	seen = {"count": seen["count"] + 1, "last": time.time()}
 	cache.set_value(key, seen, expires_in_sec=2 * 24 * 3600)
+	data["audience"] = True
 	return {"show": True, "license": data}

@@ -8,12 +8,17 @@ app_license = "MIT"
 after_install = "dagaarsoft_license.license.after_install"
 after_migrate = "dagaarsoft_license.license.after_install"
 
-app_include_js = ["/assets/dagaarsoft_license/js/license.js"]
+app_include_js = ["/assets/dagaarsoft_license/js/whitelabel.js", "/assets/dagaarsoft_license/js/license.js"]
 web_include_js = ["/assets/dagaarsoft_license/js/license_web.js"]
 
 boot_session = "dagaarsoft_license.license.boot_session"
 on_session_creation = "dagaarsoft_license.license.on_session_creation"
 before_request = ["dagaarsoft_license.license.before_request"]
+
+# White-label: DagaarSoft names instead of ERPNext / Frappe (see whitelabel.py; no migrate needed)
+after_request = ["dagaarsoft_license.whitelabel.after_request"]
+update_website_context = ["dagaarsoft_license.whitelabel.update_website_context"]
+override_whitelisted_methods = {"frappe.utils.change_log.get_versions": "dagaarsoft_license.whitelabel.get_versions"}
 
 doc_events = {
 	"*": {
@@ -22,5 +27,6 @@ doc_events = {
 		"on_trash": "dagaarsoft_license.license.guard_write",
 		"before_submit": "dagaarsoft_license.license.guard_write",
 		"before_cancel": "dagaarsoft_license.license.guard_write",
-	}
+	},
+	"Email Queue": {"before_insert": "dagaarsoft_license.whitelabel.email_queue"},
 }
