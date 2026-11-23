@@ -1,0 +1,2 @@
+include README.md
+recursive-include dagaarsoft_license *.py *.js *.css *.json *.html *.txt *.png *.svg
