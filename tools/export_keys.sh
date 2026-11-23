@@ -9,7 +9,7 @@ out=dagaar_keys.csv
 for dir in sites/*/; do
   site=$(basename "$dir")
   [ -f "sites/$site/site_config.json" ] || continue
-  bench --site "$site" list-apps 2>/dev/null | grep -q '^dagaarsoft_license' || { echo "- $site: license app not installed, skipped"; continue; }
+  bench --site "$site" execute frappe.get_installed_apps 2>/dev/null | grep -q '"dagaarsoft_license"' || { echo "- $site: license app not installed, skipped"; continue; }
   line=$(bench --site "$site" execute dagaarsoft_license.control_keys.make 2>/dev/null | grep '^DAGAAR_KEY ' | sed 's/^DAGAAR_KEY //')
   if [ -n "$line" ]; then echo "$line" >> "$out"; echo "+ $site"; else echo "! $site: failed"; fi
 done
