@@ -20,6 +20,15 @@ def update(**values):
 	state = values.get("state")
 	if state and state not in lic.STATES:
 		frappe.throw(_("Unknown state."))
+	# The control server's own update must work while the site is Read Only or Suspended.
+	frappe.flags.dagaarsoft_license_cleanup = True
+	try:
+		return _update(values)
+	finally:
+		frappe.flags.dagaarsoft_license_cleanup = False
+
+
+def _update(values):
 	doc = frappe.get_single(lic.DOCTYPE)
 	_save_extras(values, doc.state)
 	for key in FIELDS:
