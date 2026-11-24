@@ -248,7 +248,7 @@ def switch_users(state, caller):
 	import frappe.sessions
 
 	doc = frappe.get_single(DOCTYPE)
-	saved = json.loads(doc.disabled_users or "[]")
+	saved = json.loads(doc.get("disabled_users") or "[]")
 	frappe.flags.dagaarsoft_license_cleanup = True
 	try:
 		if state == "Suspended":
