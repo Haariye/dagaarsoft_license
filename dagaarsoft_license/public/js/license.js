@@ -1,9 +1,10 @@
-/* DagaarSoft License corner (desk). A small tab hangs on the right edge while a payment is due or the
-   site is read-only. Hovering or clicking it opens a small card; after sign-in (and at most twice a day,
-   counted on the server) the card opens by itself for a few seconds. The user menu item opens the card. */
+/* DagaarSoft License card (desk). While a payment is due or the site is read-only, a small card drops down
+   from the top bar for 6 seconds on every page load and for 5 seconds every 10 minutes, then hides. It stays
+   while the mouse is on it; a click keeps it open. The user menu item opens it too. */
 (function () {
 	const DUE_STATES = ["Reminder", "Grace", "Read Only", "Suspended"];
-	const PEEK_MS = 6000;
+	const VERSION = "1.2.3";
+	const FIRST_MS = 6000, AGAIN_MS = 5000, EVERY_MS = 10 * 60 * 1000;
 	// Active with an amount due = the paid period ends soon: "Renew".
 	const renewing = (d) => d && d.state === "Active" && Number(d.amount) > 0;
 	const somali = () => String((frappe.boot && frappe.boot.lang) || "").startsWith("so");
@@ -29,26 +30,20 @@
 	};
 	const day_month = (v) => short_date(v).split(" ").slice(0, 2).join(" ");
 	const css = `
-	.dsl-tab{position:fixed;right:0;top:calc(var(--navbar-height,48px) + 18px);z-index:1029;display:flex;align-items:center;gap:7px;
-		height:34px;padding:0 14px 0 12px;border-radius:17px 0 0 17px;font-weight:600;font-size:12px;cursor:pointer;
-		background:var(--card-bg,#fff);border:1px solid var(--border-color);border-right:0;box-shadow:0 4px 14px rgba(0,0,0,.14);
-		transition:transform .25s ease, opacity .25s ease}
-	.dsl-tab i{width:8px;height:8px;border-radius:50%;flex:none}
-	.dsl-tab.ok{color:#1c7a36}.dsl-tab.ok i{background:#2FB84A}
-	.dsl-tab.info{color:#2f6fde}.dsl-tab.info i{background:#2f6fde}
-	.dsl-tab.warn{color:#9a5a00}.dsl-tab.warn i{background:#f5a524}
-	.dsl-tab.bad{background:#d63a3a;border-color:#d63a3a;color:#fff}.dsl-tab.bad i{background:#fff}
-	.dsl-tab.hide{transform:translateX(110%);opacity:0}
-	.dsl-card{position:fixed;right:0;top:calc(var(--navbar-height,48px) + 18px);z-index:1030;width:330px;max-width:calc(100vw - 16px);
-		background:var(--card-bg,#fff);color:var(--text-color);border:1px solid var(--border-color);border-right:0;
-		border-radius:12px 0 0 12px;box-shadow:0 12px 32px rgba(0,0,0,.2);overflow:hidden;
-		transform:translateX(105%);opacity:0;transition:transform .28s ease, opacity .28s ease;pointer-events:none}
+	.dsl-card{position:fixed;right:90px;top:var(--navbar-height,48px);z-index:1019;width:340px;max-width:calc(100vw - 16px);
+		background:var(--card-bg,#fff);color:var(--text-color);border:1px solid var(--border-color);border-top:0;
+		border-radius:0 0 12px 12px;box-shadow:0 14px 32px rgba(0,0,0,.2);overflow:hidden;
+		transform:translateY(-110%);opacity:0;transition:transform .35s ease, opacity .35s ease;pointer-events:none}
 	.dsl-card.on{transform:none;opacity:1;pointer-events:auto}
+	@media (max-width:600px){.dsl-card{right:8px}}
 	.dsl-card .dsl-top{height:4px}.dsl-card.ok .dsl-top{background:#2FB84A}.dsl-card.info .dsl-top{background:#2f6fde}
 	.dsl-card.warn .dsl-top{background:#f5a524}.dsl-card.bad .dsl-top{background:#d63a3a}
 	.dsl-in{padding:14px 16px 16px;position:relative}
 	.dsl-x{position:absolute;right:10px;top:8px;background:none;border:0;font-size:18px;line-height:1;color:var(--text-muted);cursor:pointer}
-	.dsl-t{font-weight:700;font-size:14px;color:var(--heading-color);padding-right:20px}
+	.dsl-t{font-weight:700;font-size:14px;color:var(--heading-color);padding-right:20px;display:flex;align-items:center;gap:8px}
+	.dsl-t i{width:8px;height:8px;border-radius:50%;flex:none}
+	.dsl-card.ok .dsl-t i{background:#2FB84A}.dsl-card.info .dsl-t i{background:#2f6fde}
+	.dsl-card.warn .dsl-t i{background:#f5a524}.dsl-card.bad .dsl-t i{background:#d63a3a}
 	.dsl-s{color:var(--text-muted);font-size:12px;margin:5px 0 10px;line-height:1.45}
 	.dsl-row{display:flex;justify-content:space-between;font-size:12px;line-height:22px}.dsl-row b{color:var(--heading-color)}
 	.dsl-pay{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -63,20 +58,11 @@
 	const esc = (s) => frappe.utils.escape_html(s == null ? "" : String(s));
 	const boot = () => (frappe.boot && frappe.boot.dagaarsoft_license) || null;
 	const quiet = (d) => d.audience === false;
-	// The tab shows for due states (people not meant for the payment message only see Read only / Suspended)
-	const wants_tab = (d) => d && (quiet(d) ? ["Read Only", "Suspended"].includes(d.state)
+	// The card is for due states (people not meant for the payment message only see Read only / Suspended)
+	const wants_card = (d) => d && (quiet(d) ? ["Read Only", "Suspended"].includes(d.state)
 		: DUE_STATES.includes(d.state) || renewing(d));
 	const tone = (d) => (renewing(d) ? "info" : TONE[d.state] || "ok");
 	const amount = (d) => (d.amount ? `${esc(d.currency || "")} ${Number(d.amount).toFixed(2)}` : "");
-
-	function tab_label(d) {
-		if (renewing(d)) return t("Cusboonaysiin", "Renews") + (d.due_date ? " " + day_month(d.due_date) : "");
-		if (d.state === "Reminder") return t("Lacag-bixin", "Payment due") + (d.due_date ? " · " + day_month(d.due_date) : "");
-		if (d.state === "Grace") return t("Dib u dhac · Bixi", "Overdue · Pay now");
-		if (d.state === "Read Only") return t("Akhris-keliya", "Read only") + (quiet(d) ? "" : " · " + t("Bixi", "Pay"));
-		if (d.state === "Suspended") return t("La joojiyay", "Suspended");
-		return t("Shaqaynaya", "Active");
-	}
 
 	function card_html(d) {
 		const [so, en] = renewing(d) ? ["Cusboonaysiin dhow", "Renewal soon"] : TITLE[d.state] || TITLE.Free;
@@ -102,7 +88,7 @@
 		}
 		return `<div class="dsl-top"></div><div class="dsl-in">
 			<button class="dsl-x" type="button" aria-label="Close">×</button>
-			<div class="dsl-t">${esc(t(so, en))}</div>
+			<div class="dsl-t"><i></i>${esc(t(so, en))}</div>
 			${text ? `<div class="dsl-s">${esc(text)}</div>` : ""}
 			${rows.map(([k, v]) => `<div class="dsl-row"><span>${esc(k)}</span><b>${v}</b></div>`).join("")}
 			${pay}
@@ -110,7 +96,7 @@
 		</div>`;
 	}
 
-	let $tab = null, $card = null, data = null, pinned = false, close_timer = null, peek_timer = null;
+	let $card = null, data = null, pinned = false, close_timer = null, peek_timer = null;
 
 	function ensure_css() {
 		if (!document.getElementById("dsl-css")) $("<style id='dsl-css'>").text(css).appendTo("head");
@@ -132,7 +118,8 @@
 		data = d;
 		if (!$card) {
 			$card = $('<div class="dsl-card" role="dialog" aria-label="DagaarSoft License"></div>').appendTo("body");
-			$card.on("mouseenter", () => clearTimeout(close_timer)).on("mouseleave", () => !pinned && close_soon());
+			$card.on("mouseenter", () => { clearTimeout(close_timer); clearTimeout(peek_timer); })
+				.on("mouseleave", () => !pinned && close_soon(1500));
 			$card.on("click", ".dsl-x", () => close(true));
 			$card.on("click", ".dsl-go", () => {
 				pinned = true; clearTimeout(peek_timer);
@@ -143,65 +130,52 @@
 			$card.on("click", ".dsl-pay button", (e) => pay($(e.currentTarget).data("m")));
 			$card.on("click", ".dsl-contact", () => window.open(data.help_url, "_blank"));
 			$(document).on("mousedown", (e) => {
-				if (pinned && $card.hasClass("on") && !$(e.target).closest(".dsl-card, .dsl-tab").length) close(true);
+				if (pinned && $card.hasClass("on") && !$(e.target).closest(".dsl-card").length) close(true);
 			});
 		}
 		$card.attr("class", `dsl-card ${tone(d)}${$card.hasClass("on") ? " on" : ""}`).html(card_html(d));
-		if (wants_tab(d)) {
-			if (!$tab) {
-				$tab = $('<div class="dsl-tab" role="button" tabindex="0"></div>').appendTo("body");
-				$tab.on("mouseenter", () => open(false)).on("mouseleave", () => !pinned && close_soon());
-				$tab.on("click keydown", (e) => { if (e.type === "click" || e.key === "Enter") open(true); });
-			}
-			$tab.attr("class", `dsl-tab ${tone(d)}${$card.hasClass("on") ? " hide" : ""}`)
-				.html(`<i></i><span>${esc(tab_label(d))}</span>`);
-		} else if ($tab) {
-			$tab.remove(); $tab = null;
-		}
 	}
 
 	function open(pin) {
 		clearTimeout(close_timer);
 		if (pin) { pinned = true; clearTimeout(peek_timer); }
 		$card.addClass("on");
-		$tab && $tab.addClass("hide");
 	}
 	function close(force) {
 		if (pinned && !force) return;
-		pinned = false; clearTimeout(peek_timer);
-		$card && $card.removeClass("on");
-		$tab && $tab.removeClass("hide");
-		if ($card) $card.find(".dsl-pay").hide(), $card.find(".dsl-go").show();
+		pinned = false; clearTimeout(peek_timer); clearTimeout(close_timer);
+		if (!$card) return;
+		$card.removeClass("on");
+		$card.find(".dsl-pay").hide(); $card.find(".dsl-go").show();
 	}
-	const close_soon = () => { clearTimeout(close_timer); close_timer = setTimeout(() => close(false), 400); };
+	const close_soon = (ms) => { clearTimeout(close_timer); close_timer = setTimeout(() => close(false), ms || 400); };
 
-	// Opens by itself for a few seconds, then slides back to the tab (unless the mouse is on it).
-	function peek(d) {
+	// Drops down from the top bar for a few seconds, then hides (stays while the mouse is on it).
+	function peek(d, ms) {
+		if (pinned) return;
 		build(d);
-		open(false);
+		requestAnimationFrame(() => open(false));
 		clearTimeout(peek_timer);
-		peek_timer = setTimeout(() => { if (!pinned && !$card.is(":hover")) close(false); }, PEEK_MS);
+		peek_timer = setTimeout(() => { if (!pinned && !$card.is(":hover")) close(false); }, ms);
 	}
 
-	// User menu: open the card pinned.
+	// User menu: open the card and keep it open.
 	function show(d) {
-		const go = (x) => { build(x); open(true); };
+		const go = (x) => { build(x); requestAnimationFrame(() => open(true)); };
 		if (d) return go(d);
 		frappe.call("dagaarsoft_license.api.status").then((r) => go(r.message || {}));
 	}
 
-	// Auto-open is counted on the server (twice a day, 4 hours apart, the first right after signing in),
-	// so clearing the browser cache does not bring it back.
-	function maybe_peek(signed_in) {
+	// On every page load for 6 seconds, then every 10 minutes for 5 seconds (fresh status each time).
+	function maybe_peek(ms, fresh) {
 		const d = boot();
-		if (!d || !(DUE_STATES.includes(d.state) || renewing(d)) || quiet(d)) return;
-		frappe.call({ method: "dagaarsoft_license.api.popup_check", args: { signed_in: signed_in ? 1 : 0 } })
-			.then((r) => {
-				const m = r.message || {};
-				if (!m.show) return;
-				frappe.boot.dagaarsoft_license = m.license;
-				peek(m.license);
-			});
+		if (!fresh) return wants_card(d) && peek(d, ms);
+		frappe.call({ method: "dagaarsoft_license.api.status", args: { v: VERSION } }).then((r) => {
+			const x = r.message;
+			if (!x) return;
+			frappe.boot.dagaarsoft_license = x;
+			if (wants_card(x)) peek(x, ms);
+		});
 	}
 
 	// Read only: a blocked save shows a small corner notice instead of the big message box.
@@ -238,9 +212,7 @@
 	window.dagaarsoft_license = { show: () => show() };
 	$(document).on("app_ready", () => {
 		hook_msgprint();
-		const d = boot();
-		if (wants_tab(d)) build(d);
-		setTimeout(() => maybe_peek(!!(d && d.show_now)), 1500);
-		setInterval(() => maybe_peek(false), 15 * 60 * 1000);
+		setTimeout(() => maybe_peek(FIRST_MS, false), 1500);
+		setInterval(() => maybe_peek(AGAIN_MS, true), EVERY_MS);
 	});
 })();

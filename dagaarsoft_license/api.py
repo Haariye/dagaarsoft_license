@@ -8,7 +8,7 @@ FIELDS = ("state", "plan", "plan_features", "customer_name", "message_so", "mess
 
 
 @frappe.whitelist()
-def status():
+def status(v=None):
 	return lic.public_for_user()
 
 
@@ -159,25 +159,14 @@ def cleanup_legacy(users=None, announcement=None):
 
 @frappe.whitelist()
 def popup_check(signed_in=0):
-	"""Should the license box pop up now for this user? Counted on the server (per user, per day), so
-	clearing the browser cache does not bring it back. At most twice a day, 4 hours apart; the first
-	one right after signing in."""
-	from frappe.utils import cint, nowdate
+	"""Only browsers still running the old script (before 1.2.3) call this. They never get the old box
+	again; instead Desk's own "new version, please refresh" message is sent once a day to that user,
+	and the refresh loads the new script."""
+	from frappe.utils import nowdate
 
-	data = lic.public()
-	due = data["state"] in ("Reminder", "Grace", "Read Only", "Suspended") or (
-		data["state"] == "Active" and float(data.get("amount") or 0) > 0)
-	if not due or not lic.can_see():
-		return {"show": False}
-	import time
-
-	key = f"dagaarsoft_license:popups:{frappe.session.user}:{nowdate()}"
+	key = f"dagaarsoft_license:refresh:{frappe.session.user}:{nowdate()}"
 	cache = lic._cache()
-	seen = cache.get_value(key) or {"count": 0, "last": 0}
-	gap_ok = (time.time() - seen["last"]) >= 4 * 3600
-	if seen["count"] >= 2 or not (cint(signed_in) or gap_ok) or (seen["count"] and not gap_ok):
-		return {"show": False}
-	seen = {"count": seen["count"] + 1, "last": time.time()}
-	cache.set_value(key, seen, expires_in_sec=2 * 24 * 3600)
-	data["audience"] = True
-	return {"show": True, "license": data}
+	if not cache.get_value(key):
+		cache.set_value(key, 1, expires_in_sec=2 * 24 * 3600)
+		frappe.publish_realtime("version-update", user=frappe.session.user, after_commit=True)
+	return {"show": False}
