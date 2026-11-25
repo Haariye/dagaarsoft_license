@@ -8,8 +8,11 @@ app_license = "MIT"
 after_install = "dagaarsoft_license.license.after_install"
 after_migrate = "dagaarsoft_license.license.after_install"
 
-app_include_js = ["/assets/dagaarsoft_license/js/whitelabel.js", "/assets/dagaarsoft_license/js/license.js"]
-web_include_js = ["/assets/dagaarsoft_license/js/license_web.js"]
+from dagaarsoft_license import __version__ as _v
+
+# ?v=<version>: browsers keep /assets files for a year, so a new version must have a new URL
+app_include_js = [f"/assets/dagaarsoft_license/js/whitelabel.js?v={_v}", f"/assets/dagaarsoft_license/js/license.js?v={_v}"]
+web_include_js = [f"/assets/dagaarsoft_license/js/license_web.js?v={_v}"]
 
 boot_session = "dagaarsoft_license.license.boot_session"
 on_session_creation = "dagaarsoft_license.license.on_session_creation"
