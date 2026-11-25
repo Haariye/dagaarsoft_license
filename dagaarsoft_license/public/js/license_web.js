@@ -40,7 +40,7 @@
 		var row = el("div", "display:flex;gap:14px;flex-wrap:wrap;padding:0 28px 18px");
 		function btn(css, icon, label, fn) { var b = el("button", css); b.type = "button"; b.innerHTML = icon; b.appendChild(document.createTextNode(label)); b.onclick = fn; row.appendChild(b); }
 		var base = "flex:1 1 220px;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:12px;font-weight:700;font-size:17px;cursor:pointer;";
-		if (d.pay_url) btn(base + "background:#F7941D;color:#fff;border:0;padding:15px 18px", ICON_PAY, "Bixi / Pay", function () { window.open(d.pay_url, "dagaar_pay", "width=480,height=760"); });
+		if (d.pay_url) btn(base + "background:#F7941D;color:#fff;border:0;padding:15px 18px", ICON_PAY, "Bixi / Pay", function () { window.open(d.pay_url + (d.pay_url.indexOf("?") > -1 ? "&" : "?") + "src=login", "dagaar_pay", "width=480,height=760"); });
 		if (d.help_url) btn(base + "background:#fff;color:#14284B;border:2px solid #14284B;padding:13px 18px", ICON_HELP, "La xidhiidh Dagaar", function () { window.open(d.help_url, "_blank"); });
 		var foot = el("div", "display:flex;align-items:center;gap:14px;padding:0 28px 14px;color:#2d5ea8;font-size:14px");
 		foot.appendChild(el("div", "flex:1;height:1px;background:#dfe5ee")); foot.appendChild(el("span", "", "Dagaar Technology")); foot.appendChild(el("div", "flex:1;height:1px;background:#dfe5ee"));

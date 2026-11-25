@@ -63,11 +63,50 @@ def _save_extras(values, old_state):
 		frappe.db.set_default(lic.STATE_SINCE_KEY, str(frappe.utils.getdate(str(values["state_since"])[:10])))
 	elif values.get("state") and values.get("state") != old_state:
 		frappe.db.set_default(lic.STATE_SINCE_KEY, frappe.utils.nowdate())
+	if "pay_roles" in values:
+		roles = values.get("pay_roles") or []
+		if isinstance(roles, str):
+			roles = json.loads(roles) if roles.strip().startswith("[") else roles.split(",")
+		frappe.db.set_default(lic.PAY_ROLES_KEY, json.dumps(sorted({str(r).strip() for r in roles if str(r).strip()})))
 	if "whitelabel" in values:
 		value = "1" if frappe.utils.cint(values.get("whitelabel")) else "0"
 		if frappe.db.get_default("dagaarsoft_whitelabel") != value:
 			frappe.db.set_default("dagaarsoft_whitelabel", value)
 			frappe.clear_cache()
+
+
+@frappe.whitelist(methods=["POST"])
+def pay_link(method=None):
+	"""The payment page link for this user, signed with the site's Dagaar control key so Dagaar knows who
+	asked (logged with every payment request). Only users with a payment role get one."""
+	import hashlib
+	import hmac
+	import time
+	from urllib.parse import parse_qs, urlencode, urlparse
+
+	from frappe.utils.password import get_decrypted_password
+
+	from dagaarsoft_license.control_keys import USER as CONTROL_USER
+
+	if not lic.can_pay():
+		frappe.throw(_("Only your accounts manager can pay. / Lacag-bixinta waxa samayn kara maamulaha xisaabaadka."),
+		             frappe.PermissionError)
+	url = lic.get().get("pay_url")
+	if not url:
+		frappe.throw(_("Payment will be available once your site is connected to Dagaar. Please contact Dagaar Technology."))
+	user = frappe.session.user
+	params = {"u": user, "n": frappe.utils.get_fullname(user)}
+	if method:
+		params["method"] = method
+	token = (parse_qs(urlparse(url).query).get("t") or [""])[0]
+	secret = None
+	if frappe.db.exists("User", CONTROL_USER):
+		secret = get_decrypted_password("User", CONTROL_USER, "api_secret", raise_exception=False)
+	if secret and token:
+		ts = int(time.time())
+		params["ts"] = ts
+		params["sig"] = hmac.new(secret.encode(), f"{token}|{user}|{ts}".encode(), hashlib.sha256).hexdigest()
+	return url + ("&" if "?" in url else "?") + urlencode(params)
 
 
 @frappe.whitelist(allow_guest=True)

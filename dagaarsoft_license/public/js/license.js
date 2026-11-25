@@ -76,11 +76,12 @@
 			${quiet ? "" : `<p class="dsl-msg">${esc(d.message_so || msg[0])}</p>
 			<p class="dsl-msg en">${esc(d.message_en || msg[1])}</p>`}
 			${amount ? `<div class="dsl-due">Lacagta / Amount: <b>${amount}</b>${d.read_only_until && d.state === "Read Only" ? ` · Akhris-keliya ilaa / Read-only until ${esc(short_date(d.read_only_until))}` : ""}</div>` : ""}
-			<div class="dsl-pay">${(d.methods || []).map((m) => `<button type="button" data-m="${esc(m)}">${esc(m)}</button>`).join("")}</div>
+			${d.can_pay === false ? (quiet ? "" : `<p class="dsl-msg en">Lacag-bixinta waxa samayn kara maamulaha xisaabaadka. / Only your accounts manager can pay.</p>`) :
+				`<div class="dsl-pay">${(d.methods || []).map((m) => `<button type="button" data-m="${esc(m)}">${esc(m)}</button>`).join("")}</div>`}
 			<div class="dsl-help"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Caawimaad / Help: ${esc(d.contact || "Dagaar Technology")}</span></div>
 		</div>
 		<div class="dsl-foot">
-			${due ? `<button class="btn btn-primary dsl-activate" type="button">${renew ? "Cusboonaysii / Renew" : "Bixi / Pay"}</button>` : ""}
+			${due && d.can_pay !== false ? `<button class="btn btn-primary dsl-activate" type="button">${renew ? "Cusboonaysii / Renew" : "Bixi / Pay"}</button>` : ""}
 			${d.help_url ? `<button class="btn btn-default dsl-contact" type="button">La xidhiidh Dagaar</button>` : ""}
 			<button class="btn btn-default dsl-close" type="button">Xidh / Close</button>
 		</div>`;
@@ -97,8 +98,14 @@
 			dialog.$body.find(".dsl-x, .dsl-close").on("click", () => dialog.hide());
 			dialog.$body.find(".dsl-activate").on("click", () => dialog.$body.find(".dsl-pay").addClass("on"));
 			dialog.$body.find(".dsl-pay button").on("click", (e) => {
-				if (d.pay_url) window.open(d.pay_url + (d.pay_url.includes("?") ? "&" : "?") + "method=" + encodeURIComponent($(e.currentTarget).data("m")), "dagaar_pay", "width=480,height=760");
-				else frappe.msgprint(__("Payment will be available once your site is connected to Dagaar. Please contact Dagaar Technology."));
+				if (!d.pay_url) return frappe.msgprint(__("Payment will be available once your site is connected to Dagaar. Please contact Dagaar Technology."));
+				// open the window now (pop-up blockers), then send it to the signed link
+				const win = window.open("about:blank", "dagaar_pay", "width=480,height=760");
+				frappe.call({
+					method: "dagaarsoft_license.api.pay_link", args: { method: $(e.currentTarget).data("m") },
+					callback: (r) => { if (win) win.location = r.message; else window.open(r.message, "dagaar_pay", "width=480,height=760"); },
+					error: () => { if (win) win.close(); },
+				});
 			});
 			dialog.$body.find(".dsl-contact").on("click", () => window.open(d.help_url, "_blank"));
 			dialog.show();

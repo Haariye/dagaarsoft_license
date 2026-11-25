@@ -102,6 +102,8 @@ def before_request():
 # message changes: read-only and suspension themselves apply to everyone as before.
 AUDIENCE_KEY = "dagaarsoft_license_audience"
 STATE_SINCE_KEY = "dagaarsoft_license_state_since"
+PAY_ROLES_KEY = "dagaarsoft_license_pay_roles"
+DEFAULT_PAY_ROLES = ("Accounts Manager", "System Manager")
 # The control server's alert names for each state here (first one found is used).
 AUDIENCE_ALIASES = {
 	"Renewal Soon": ("Renewal Soon", "Active"),
@@ -169,14 +171,38 @@ def can_see(user=None, roles=None):
 	return "System Manager" in have or bool(wanted & have)
 
 
+def pay_roles():
+	import json
+
+	try:
+		roles = json.loads(frappe.db.get_default(PAY_ROLES_KEY) or "null")
+	except Exception:
+		roles = None
+	return set(roles) if isinstance(roles, list) and roles else set(DEFAULT_PAY_ROLES)
+
+
+def can_pay(user=None):
+	"""Only billing roles get the Pay buttons (set by Dagaar: Roles That Can Press Pay)."""
+	user = user or frappe.session.user
+	if user == "Administrator":
+		return True
+	if user == "Guest":
+		return False
+	return bool(pay_roles() & set(frappe.get_roles(user)))
+
+
 def public_for_user(user=None):
-	"""The license box for this user: without the payment message when the message is not for them."""
+	"""The license box for this user: without the payment message when the message is not for them, and
+	without the Pay buttons when the user has no payment role."""
 	data = public()
 	if can_see(user):
 		data["audience"] = True
+		data["can_pay"] = can_pay(user)
+		if not data["can_pay"]:
+			data["pay_url"] = None
 		return data
 	data.update({"audience": False, "message_so": None, "message_en": None, "amount": None, "due_date": None,
-	             "pay_url": None})
+	             "pay_url": None, "can_pay": False})
 	return data
 
 
